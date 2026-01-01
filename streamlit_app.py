@@ -431,8 +431,7 @@ def show_book():
         st.toast("The storyteller is clearing his throat...", icon="🗣️")
         clean = pages[curr].replace("<br>", " ").replace("\n", " ")
         if st.session_state.get("user_api_key") or os.getenv("OPENAI_API_KEY"):
-            with st.spinner("Preparing voice..."):
-                b64 = generate_audio_for_text(clean)
+            b64 = generate_audio_for_text(clean)
             if b64:
                 narrator_html = f'<audio id="narrator" autoplay src="data:audio/mp3;base64,{b64}"></audio>'
         else:

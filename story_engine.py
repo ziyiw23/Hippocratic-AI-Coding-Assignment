@@ -187,7 +187,13 @@ class ImageGenerator:
 
 
 class StoryOrchestrator:
-    def __init__(self, writer_temperature: float = 0.85, judge_temperature: float = 0.15, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        writer_temperature: float = 0.85,
+        judge_temperature: float = 0.15,
+        api_key: Optional[str] = None,
+        **_: object,
+    ):
         self.generator = StoryGenerator(writer_temperature=writer_temperature, api_key=api_key)
         self.judge = StoryJudge(judge_temperature=judge_temperature, api_key=api_key)
         self.image_generator = ImageGenerator(api_key=api_key)
