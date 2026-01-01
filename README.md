@@ -15,7 +15,7 @@ Create `.env` with `OPENAI_API_KEY=your_key` (never committed).
 
 3) Run the UI  
 `streamlit run streamlit_app.py`  
-Open http://localhost:8501. Enter your prompt or pick a suggestion, choose ambience, and click “Write Story”.
+Open the Network URL. Enter your prompt or pick a suggestion, choose ambience, and click “Write Story”.
 
 4) CLI (minimal flow)  
 `python main.py`
