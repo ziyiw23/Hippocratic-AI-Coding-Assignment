@@ -7,6 +7,10 @@ A multi-step story generator for ages 5–10 with an LLM writer, judge/refiner l
 - Presents the result in a 3D book experience with page flips, ambient audio (local tracks), and quick-pick prompt suggestions.
 
 ## Quick start
+0) *(Optional but recommended)* Create and activate an isolated environment:
+   - `python -m venv .venv && source .venv/bin/activate` (or `.venv\Scripts\activate` on Windows)
+   - **or** `conda create -n bedtime python=3.10 && conda activate bedtime`
+
 1) Install deps  
 `pip install -r requirements.txt`
 
@@ -23,6 +27,7 @@ Open the Network URL. Enter your prompt or pick a suggestion, choose ambience, a
 - **Illustrations:** DALL-E 3 image generation when key is set; session-cached placeholders otherwise.
 - **User Interface:** HTML/CSS book renderer, page navigation, local ambient audio, and floating firefly accents.
 - **Prompt ideas:** Sidebar button to fetch fresh prompts (requires key) plus ready-made suggestions.
+- **Configurable judge rounds:** Tune how many review/refine passes the AI judge takes before presenting the final tale.
 
 ## Notes
 - Audio is served from local `musics/` files and embedded as base64 for reliability.
@@ -31,15 +36,28 @@ Open the Network URL. Enter your prompt or pick a suggestion, choose ambience, a
 ## Flow
 ```mermaid
 graph TD
-    user[User Request] --> outliner[Outliner]
-    outliner --> writer[Writer]
-    writer --> judge[Judge]
-    judge -- "Needs improvement" --> refiner[Refiner]
-    refiner --> judge
-    judge -- "Approved" --> story[Final Story]
-    writer --> illustrator[Illustration Prompt]
-    illustrator --> imagegen[DALL-E 3]
-    imagegen --> story
-    story --> bookUI[3D Book UI]
-    imagegen --> bookUI
+    User([User]) -->|Prompt + Preferences| UI[Streamlit Interface]
+    UI -->|Request| Orch[Story Orchestrator]
+    
+    subgraph "Agentic Story Engine"
+        Orch -->|Prompt| Writer[GPT Writer Agent]
+        Writer -->|Draft| Judge[GPT Judge Agent]
+        Judge -->|Evaluation| Decision{Pass?}
+        
+        Decision -- No -->|Critique + Draft| Editor[GPT Refiner Agent]
+        Editor -->|Rewritten Story| ImgPrompt[Art Director Agent]
+        Decision -- Yes --> ImgPrompt
+        
+        ImgPrompt -->|Visual Description| DALL_E[DALL-E 3]
+    end
+    
+    subgraph "Multimedia Output"
+        Editor -->|Final Text| TTS[OpenAI TTS]
+        DALL_E -->|Image URL| UI
+        TTS -->|Audio| UI
+    end
+    
+    UI -->|Interactive Book| User
 ```
+
+_Note: The judge/refiner loop can repeat multiple times (as configured in the sidebar) before advancing to illustration and narration._

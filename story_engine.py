@@ -1,7 +1,7 @@
 import json
 import os
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -48,6 +48,15 @@ class StoryResult:
     iterations: int
     genre: Optional[str] = None
     length: Optional[str] = None
+    feedback_history: List[StoryFeedback] = field(default_factory=list)
+
+    @property
+    def judge_critique(self) -> str:
+        return self.feedback.critique if self.feedback else ""
+
+    @property
+    def judge_critiques(self) -> List[str]:
+        return [fb.critique for fb in self.feedback_history if fb.critique]
 
 
 class StoryGenerator:
@@ -202,11 +211,13 @@ class StoryOrchestrator:
         outline = self.generator.create_outline(request, genre=genre, length=length)
         draft = self.generator.write_story(request, outline, genre=genre, length=length)
         feedback = self.judge.evaluate(draft)
+        feedback_history: List[StoryFeedback] = [feedback]
         iterations = 0
         while not feedback.approved and iterations < retries:
             draft = self.generator.refine_story(draft, feedback.critique)
             iterations += 1
             feedback = self.judge.evaluate(draft)
+            feedback_history.append(feedback)
         final_story = draft
         image_prompt = self.generator.illustration_prompt(final_story)
         image_url = self.image_generator.generate_image(image_prompt)
@@ -221,5 +232,5 @@ class StoryOrchestrator:
             iterations=iterations,
             genre=genre,
             length=length,
+            feedback_history=feedback_history,
         )
-
