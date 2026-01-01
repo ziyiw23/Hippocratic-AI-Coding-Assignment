@@ -10,21 +10,18 @@ A multi-step story generator for ages 5–10 with an LLM writer, judge/refiner l
 1) Install deps  
 `pip install -r requirements.txt`
 
-2) Set your key  
-Create `.env` with `OPENAI_API_KEY=your_key` (never committed).
-
-3) Run the UI  
+2) Run the UI  
 `streamlit run streamlit_app.py`  
 Open the Network URL. Enter your prompt or pick a suggestion, choose ambience, and click “Write Story”.
 
-4) CLI (minimal flow)  
+3) CLI (minimal flow)  
 `python main.py`
 
 ## Features
 - **Agentic loop:** Outliner → Writer → Judge → Refiner (bounded retries).
-- **Safety + tone:** Judge enforces vocabulary and non-scary themes for ages 5–10.
+- **Safety + tone:** Judge enforces vocabulary and family friendly themes for ages 5–10.
 - **Illustrations:** DALL-E 3 image generation when key is set; session-cached placeholders otherwise.
-- **Immersive UI:** HTML/CSS book renderer, page navigation, local ambient audio, and floating firefly accents.
+- **User Interface:** HTML/CSS book renderer, page navigation, local ambient audio, and floating firefly accents.
 - **Prompt ideas:** Sidebar button to fetch fresh prompts (requires key) plus ready-made suggestions.
 
 ## Notes
