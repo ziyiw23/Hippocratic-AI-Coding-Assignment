@@ -111,12 +111,33 @@ def get_new_suggestions():
 def set_prompt(text):
     st.session_state.selected_prompt = text
 
-# --- GLOBAL STYLES ---
+# --- GLOBAL STYLES & ANIMATIONS ---
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
     
+    /* --- ANIMATION DEFINITIONS --- */
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+        100% { transform: translateY(0px); }
+    }
+    
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+    }
+    
+    @keyframes firefly-move {
+        0% { transform: translate(0, 0); opacity: 0; }
+        20% { opacity: 1; }
+        50% { opacity: 0.5; }
+        80% { opacity: 1; }
+        100% { transform: translate(100px, -150px); opacity: 0; }
+    }
+
     /* BACKGROUND */
     .stApp {
         background-color: #1a1614;
@@ -129,7 +150,6 @@ st.markdown(
         background-color: #261C15;
         border-right: 1px solid #4a3b2a;
     }
-    /* We only target paragraphs and labels, NOT generic spans (which breaks icons) */
     section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label {
         color: #e8d5b0 !important;
         font-family: 'Cormorant Garamond', serif !important;
@@ -143,7 +163,7 @@ st.markdown(
     h1, h2, h3 { font-family: 'Cinzel', serif !important; color: #d4af37 !important; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
     p, div, label, input, textarea { font-family: 'Cormorant Garamond', serif !important; color: #f2e6cf; font-size: 1.1rem; }
     
-    /* DESK HEADER */
+    /* DESK HEADER (With Float Animation) */
     .desk-header {
         background: rgba(20, 15, 10, 0.90);
         border: 1px solid #4a3b2a;
@@ -152,6 +172,7 @@ st.markdown(
         box-shadow: 0 0 40px rgba(0,0,0,0.8);
         text-align: center;
         margin-bottom: 20px;
+        animation: float 6s ease-in-out infinite; /* <--- Floating effect */
     }
 
     /* SUGGESTION CARDS */
@@ -163,7 +184,7 @@ st.markdown(
         cursor: pointer;
     }
     
-    /* BUTTONS */
+    /* BUTTONS (With Hover Transitions) */
     .stButton button {
         background: linear-gradient(to bottom, #3e2b1f, #2a1b15);
         color: #d4af37;
@@ -171,15 +192,37 @@ st.markdown(
         font-family: 'Cinzel', serif;
         font-size: 1.0rem;
         margin-top: 10px;
+        transition: all 0.3s ease; /* <--- Smooth hover */
     }
     .stButton button:hover {
         border-color: #ffd700;
         color: #fff;
+        transform: scale(1.02);
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
     }
     
-    /* HIDE FOOTER ONLY (Keep Header for Sidebar Toggle) */
+    /* FIREFLIES CONTAINER */
+    .firefly {
+        position: fixed;
+        width: 4px;
+        height: 4px;
+        background-color: #ffd700;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #ffd700;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0;
+    }
+    
+    /* HIDE FOOTER ONLY */
     footer {visibility: hidden;}
     </style>
+    
+    <div class="firefly" style="top: 80%; left: 10%; animation: firefly-move 8s infinite alternate;"></div>
+    <div class="firefly" style="top: 60%; left: 20%; animation: firefly-move 12s infinite alternate-reverse;"></div>
+    <div class="firefly" style="top: 70%; left: 80%; animation: firefly-move 10s infinite alternate;"></div>
+    <div class="firefly" style="top: 90%; left: 90%; animation: firefly-move 15s infinite alternate-reverse;"></div>
+    <div class="firefly" style="top: 50%; left: 50%; animation: firefly-move 20s infinite alternate;"></div>
     """,
     unsafe_allow_html=True,
 )
@@ -308,6 +351,7 @@ def show_book():
     
     page_text = escape_html(pages[curr]).replace("\n\n", "<br/><br/>").replace("\n", "<br/>")
     
+    # HTML BOOK (NOW WITH INTERIOR ANIMATIONS)
     book_html = f"""
     <!DOCTYPE html>
     <html>
@@ -320,6 +364,13 @@ def show_book():
             height: 100vh; overflow: hidden;
             font-family: 'Cormorant Garamond', serif;
         }}
+        
+        /* Entrance Animation for the whole book */
+        @keyframes zoomIn {{
+            from {{ opacity: 0; transform: scale(0.9); }}
+            to {{ opacity: 1; transform: scale(1); }}
+        }}
+        
         .book {{
             position: relative;
             width: 850px; height: 580px;
@@ -329,16 +380,26 @@ def show_book():
             border-radius: 5px 15px 15px 5px;
             display: flex; overflow: hidden;
             border: 8px solid #3e2b1f; border-left: 20px solid #2a1b15;
+            animation: zoomIn 0.8s ease-out; /* Book entrance */
         }}
+
+        /* Page Turn Animation */
+        @keyframes pageFade {{
+            from {{ opacity: 0; transform: translateY(10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+
         .page-left {{
             flex: 1; padding: 40px 40px 40px 50px;
             color: #2b1c0f; font-size: 20px; line-height: 1.6;
             position: relative;
+            animation: pageFade 0.6s ease-out; /* Triggers on every page change */
         }}
         .page-right {{
             flex: 1; padding: 30px;
             display: flex; align-items: center; justify-content: center;
             background: rgba(245, 240, 230, 0.3);
+            animation: pageFade 0.8s ease-out; /* Image fades in slightly slower */
         }}
         .illustration {{
             border: 5px double #8b6c42;
@@ -347,6 +408,10 @@ def show_book():
             max-width: 90%; max-height: 400px;
             transform: rotate(1deg);
             mix-blend-mode: multiply;
+            transition: transform 0.5s ease;
+        }}
+        .illustration:hover {{
+            transform: rotate(0deg) scale(1.02);
         }}
         .drop-cap::first-letter {{
             font-family: 'Cinzel', serif; font-size: 3.5em; float: left;
