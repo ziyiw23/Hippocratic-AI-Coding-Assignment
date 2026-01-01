@@ -44,9 +44,9 @@ graph TD
         Writer -->|Draft| Judge[GPT Judge Agent]
         Judge -->|Evaluation| Decision{Pass?}
         
-        Decision -- No -->|Critique + Draft| Editor[GPT Refiner Agent]
+        Decision -->|No (needs fixes)| Editor[GPT Refiner Agent]
         Editor -->|Rewritten Story| ImgPrompt[Art Director Agent]
-        Decision -- Yes --> ImgPrompt
+        Decision -->|Yes| ImgPrompt
         
         ImgPrompt -->|Visual Description| DALL_E[DALL-E 3]
     end
