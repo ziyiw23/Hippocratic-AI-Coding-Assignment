@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 from typing import List
 import streamlit as st
 import streamlit.components.v1 as components
@@ -10,9 +11,10 @@ st.set_page_config(page_title="The Antique Storybook", page_icon="🕯️", layo
 
 # --- ASSETS ---
 MUSIC_TRACKS = {
-    "✨ Magical Forest": "https://pixabay.com/music/christmas-quirky-children-music-349960/",
-    "🎹 Gentle Piano": "https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3", 
-    "🌧️ Cozy Rain": "https://cdn.pixabay.com/audio/2021/08/09/audio_03d6928e4e.mp3"
+    "✨ Magical Forest": "musics/quirky-children-music-349960.mp3",
+    "🎹 Gentle Piano": "musics/soft-background-piano-285589.mp3",
+    "🌧️ Cozy Rain": "musics/in-the-room-when-the-rain-pouring-117209.mp3",
+    "🤫 Silence": ""
 }
 
 # --- SESSION STATE ---
@@ -34,6 +36,8 @@ if "suggestions" not in st.session_state:
         "The library where books whisper their stories at night...",
         "A squirrel who opens a bakery for the forest animals..."
     ]
+if "audio_b64" not in st.session_state:
+    st.session_state.audio_b64 = ""
 
 image_generator = ImageGenerator()
 
@@ -67,6 +71,16 @@ def split_text_into_pages(text: str, chars_per_page: int = 380) -> List[str]:
 
 def escape_html(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def load_audio_b64(path: str) -> str:
+    if not path:
+        return ""
+    try:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    except Exception:
+        return ""
 
 def get_new_suggestions():
     """Calls LLM to get 3 fresh story ideas."""
@@ -185,9 +199,11 @@ with st.sidebar:
     audio_enabled = st.toggle("🎵 Ambience", value=True)
     
     audio_url = None
+    st.session_state.audio_b64 = ""
     if audio_enabled:
         selected_music = st.selectbox("Track", options=list(MUSIC_TRACKS.keys()), index=0, label_visibility="collapsed")
         audio_url = MUSIC_TRACKS[selected_music]
+        st.session_state.audio_b64 = load_audio_b64(audio_url)
 
     st.markdown("---")
     
@@ -376,16 +392,17 @@ def show_book():
             st.rerun()
             
     # Audio Player
-    if audio_url:
-        st.markdown(f"""
+    if st.session_state.audio_b64:
+        audio_tag = f"""
             <audio autoplay loop id="bg-audio">
-                <source src="{audio_url}" type="audio/mp3">
+                <source src="data:audio/mp3;base64,{st.session_state.audio_b64}" type="audio/mp3">
             </audio>
             <script>
-                var audio = document.getElementById("bg-audio");
-                if (audio) {{ audio.volume = 0.2; }}
+                const audio = document.getElementById("bg-audio");
+                if (audio) {{ audio.volume = 0.25; }}
             </script>
-            """, unsafe_allow_html=True)
+        """
+        st.markdown(audio_tag, unsafe_allow_html=True)
 
 # --- MAIN ROUTER ---
 if st.session_state.view == "desk":
