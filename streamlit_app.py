@@ -10,14 +10,14 @@ from story_engine import ImageGenerator, StoryOrchestrator
 st.set_page_config(page_title="The Antique Storybook", page_icon="🕯️", layout="wide")
 
 # --- ASSETS ---
+# MP3 links for background ambience
 MUSIC_TRACKS = {
-    "✨ Magical Forest": "musics/quirky-children-music-349960.mp3",
-    "🎹 Gentle Piano": "musics/soft-background-piano-285589.mp3",
-    "🌧️ Cozy Rain": "musics/in-the-room-when-the-rain-pouring-117209.mp3",
-    "🤫 Silence": ""
+    "✨ Magical Forest": "https://cdn.pixabay.com/audio/2022/10/24/audio_97f805a069.mp3",
+    "🎹 Gentle Piano": "https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3",
+    "🌧️ Cozy Rain": "https://cdn.pixabay.com/audio/2021/08/09/audio_03d6928e4e.mp3"
 }
 
-# --- SESSION STATE ---
+# --- SESSION STATE INITIALIZATION ---
 if "view" not in st.session_state:
     st.session_state.view = "desk"
 if "current_page" not in st.session_state:
@@ -38,11 +38,15 @@ if "suggestions" not in st.session_state:
     ]
 if "audio_b64" not in st.session_state:
     st.session_state.audio_b64 = ""
+if "audio_cache" not in st.session_state:
+    st.session_state.audio_cache = {} # Cache for narrator audio
 
 image_generator = ImageGenerator()
 
-# --- HELPERS ---
+# --- HELPER FUNCTIONS ---
+
 def split_text_into_pages(text: str, chars_per_page: int = 380) -> List[str]:
+    """Splits text into pages while respecting paragraph boundaries."""
     paragraphs = text.split('\n\n')
     pages = []
     current_page = ""
@@ -72,15 +76,12 @@ def split_text_into_pages(text: str, chars_per_page: int = 380) -> List[str]:
 def escape_html(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-
-def load_audio_b64(path: str) -> str:
-    if not path:
-        return ""
-    try:
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
-    except Exception:
-        return ""
+def load_audio_b64(url: str) -> str:
+    """Note: In a real app, you'd download the URL content. 
+    Here we rely on the browser to play the URL directly in the audio tag 
+    or logic to fetch if local. For simplicity, we just pass the URL in this version 
+    unless you have local files."""
+    return "" 
 
 def get_new_suggestions():
     """Calls LLM to get 3 fresh story ideas."""
@@ -111,23 +112,43 @@ def get_new_suggestions():
 def set_prompt(text):
     st.session_state.selected_prompt = text
 
-# --- GLOBAL STYLES & ANIMATIONS ---
+def generate_audio_for_text(text: str) -> str:
+    """Uses OpenAI TTS to generate audio for the specific page text."""
+    if not os.getenv("OPENAI_API_KEY"):
+        return ""
+    
+    # Simple cache to prevent re-generating cost
+    text_key = hash(text)
+    if text_key in st.session_state.audio_cache:
+        return st.session_state.audio_cache[text_key]
+
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="fable",
+            input=text
+        )
+        # Convert to base64 for embedding
+        audio_b64 = base64.b64encode(response.content).decode("utf-8")
+        st.session_state.audio_cache[text_key] = audio_b64
+        return audio_b64
+    except Exception as e:
+        st.error(f"TTS Error: {e}")
+        return ""
+
+# --- GLOBAL CSS & ANIMATIONS ---
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
     
-    /* --- ANIMATION DEFINITIONS --- */
+    /* --- ANIMATION KEYFRAMES --- */
     @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-6px); }
         100% { transform: translateY(0px); }
-    }
-    
-    @keyframes pulse-glow {
-        0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
     }
     
     @keyframes firefly-move {
@@ -145,7 +166,7 @@ st.markdown(
                           linear-gradient(to bottom, #2b2118, #1a120b);
     }
     
-    /* SIDEBAR STYLING - FIXED ICON ISSUE */
+    /* SIDEBAR STYLING */
     section[data-testid="stSidebar"] {
         background-color: #261C15;
         border-right: 1px solid #4a3b2a;
@@ -163,7 +184,7 @@ st.markdown(
     h1, h2, h3 { font-family: 'Cinzel', serif !important; color: #d4af37 !important; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
     p, div, label, input, textarea { font-family: 'Cormorant Garamond', serif !important; color: #f2e6cf; font-size: 1.1rem; }
     
-    /* DESK HEADER (With Float Animation) */
+    /* DESK HEADER (Floating) */
     .desk-header {
         background: rgba(20, 15, 10, 0.90);
         border: 1px solid #4a3b2a;
@@ -172,19 +193,10 @@ st.markdown(
         box-shadow: 0 0 40px rgba(0,0,0,0.8);
         text-align: center;
         margin-bottom: 20px;
-        animation: float 6s ease-in-out infinite; /* <--- Floating effect */
+        animation: float 6s ease-in-out infinite;
     }
 
-    /* SUGGESTION CARDS */
-    .suggestion-btn {
-        border: 1px solid #4a3b2a;
-        padding: 10px;
-        border-radius: 5px;
-        background: rgba(0,0,0,0.3);
-        cursor: pointer;
-    }
-    
-    /* BUTTONS (With Hover Transitions) */
+    /* BUTTONS */
     .stButton button {
         background: linear-gradient(to bottom, #3e2b1f, #2a1b15);
         color: #d4af37;
@@ -192,7 +204,7 @@ st.markdown(
         font-family: 'Cinzel', serif;
         font-size: 1.0rem;
         margin-top: 10px;
-        transition: all 0.3s ease; /* <--- Smooth hover */
+        transition: all 0.3s ease;
     }
     .stButton button:hover {
         border-color: #ffd700;
@@ -201,11 +213,10 @@ st.markdown(
         box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
     }
     
-    /* FIREFLIES CONTAINER */
+    /* FIREFLIES */
     .firefly {
         position: fixed;
-        width: 4px;
-        height: 4px;
+        width: 4px; height: 4px;
         background-color: #ffd700;
         border-radius: 50%;
         box-shadow: 0 0 10px #ffd700;
@@ -221,7 +232,6 @@ st.markdown(
     <div class="firefly" style="top: 80%; left: 10%; animation: firefly-move 8s infinite alternate;"></div>
     <div class="firefly" style="top: 60%; left: 20%; animation: firefly-move 12s infinite alternate-reverse;"></div>
     <div class="firefly" style="top: 70%; left: 80%; animation: firefly-move 10s infinite alternate;"></div>
-    <div class="firefly" style="top: 90%; left: 90%; animation: firefly-move 15s infinite alternate-reverse;"></div>
     <div class="firefly" style="top: 50%; left: 50%; animation: firefly-move 20s infinite alternate;"></div>
     """,
     unsafe_allow_html=True,
@@ -231,7 +241,6 @@ st.markdown(
 with st.sidebar:
     st.header("Configuration")
     
-    # API Key Input
     api_key_input = st.text_input("OpenAI API Key", type="password", help="Leave blank if using .env")
     if api_key_input:
         os.environ["OPENAI_API_KEY"] = api_key_input
@@ -240,13 +249,10 @@ with st.sidebar:
     
     # AUDIO TOGGLE
     audio_enabled = st.toggle("🎵 Ambience", value=True)
-    
     audio_url = None
-    st.session_state.audio_b64 = ""
     if audio_enabled:
         selected_music = st.selectbox("Track", options=list(MUSIC_TRACKS.keys()), index=0, label_visibility="collapsed")
         audio_url = MUSIC_TRACKS[selected_music]
-        st.session_state.audio_b64 = load_audio_b64(audio_url)
 
     st.markdown("---")
     
@@ -282,7 +288,6 @@ def show_desk():
             if not prompt.strip():
                 st.warning("Please enter a story idea first.")
                 return
-            
             if not os.getenv("OPENAI_API_KEY"):
                 st.error("Please provide an OpenAI API Key in the sidebar.")
                 return
@@ -295,6 +300,7 @@ def show_desk():
                     st.error(f"Generation failed: {exc}")
                     return
             
+            # Image Fallback
             base_image = getattr(result, "image_url", None)
             if not base_image:
                 base_image = f"https://placehold.co/600x600/2a1b15/e8d5b0/png?text=Story+Image"
@@ -351,7 +357,7 @@ def show_book():
     
     page_text = escape_html(pages[curr]).replace("\n\n", "<br/><br/>").replace("\n", "<br/>")
     
-    # HTML BOOK (NOW WITH INTERIOR ANIMATIONS)
+    # HTML BOOK IFRAME
     book_html = f"""
     <!DOCTYPE html>
     <html>
@@ -364,13 +370,9 @@ def show_book():
             height: 100vh; overflow: hidden;
             font-family: 'Cormorant Garamond', serif;
         }}
-        
-        /* Entrance Animation for the whole book */
-        @keyframes zoomIn {{
-            from {{ opacity: 0; transform: scale(0.9); }}
-            to {{ opacity: 1; transform: scale(1); }}
-        }}
-        
+        @keyframes zoomIn {{ from {{ opacity: 0; transform: scale(0.9); }} to {{ opacity: 1; transform: scale(1); }} }}
+        @keyframes pageFade {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+
         .book {{
             position: relative;
             width: 850px; height: 580px;
@@ -380,26 +382,19 @@ def show_book():
             border-radius: 5px 15px 15px 5px;
             display: flex; overflow: hidden;
             border: 8px solid #3e2b1f; border-left: 20px solid #2a1b15;
-            animation: zoomIn 0.8s ease-out; /* Book entrance */
+            animation: zoomIn 0.8s ease-out;
         }}
-
-        /* Page Turn Animation */
-        @keyframes pageFade {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-
         .page-left {{
             flex: 1; padding: 40px 40px 40px 50px;
             color: #2b1c0f; font-size: 20px; line-height: 1.6;
             position: relative;
-            animation: pageFade 0.6s ease-out; /* Triggers on every page change */
+            animation: pageFade 0.6s ease-out;
         }}
         .page-right {{
             flex: 1; padding: 30px;
             display: flex; align-items: center; justify-content: center;
             background: rgba(245, 240, 230, 0.3);
-            animation: pageFade 0.8s ease-out; /* Image fades in slightly slower */
+            animation: pageFade 0.8s ease-out;
         }}
         .illustration {{
             border: 5px double #8b6c42;
@@ -410,9 +405,7 @@ def show_book():
             mix-blend-mode: multiply;
             transition: transform 0.5s ease;
         }}
-        .illustration:hover {{
-            transform: rotate(0deg) scale(1.02);
-        }}
+        .illustration:hover {{ transform: rotate(0deg) scale(1.02); }}
         .drop-cap::first-letter {{
             font-family: 'Cinzel', serif; font-size: 3.5em; float: left;
             line-height: 0.8; margin-right: 0.1em; color: #8b6c42;
@@ -440,34 +433,75 @@ def show_book():
     
     components.html(book_html, height=650, scrolling=False)
 
-    # Navigation
+    # --- NARRATOR & NAVIGATION ---
     st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
-    with c2:
+    
+    nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
+    
+    with nav_col1:
         if st.button("⬅️ Previous", disabled=curr == 0):
             st.session_state.current_page = max(0, curr - 1)
             st.rerun()
-    with c3:
-        if st.button("📜 Close Book"):
-            st.session_state.view = "desk"
-            st.rerun()
-    with c4:
+
+    with nav_col2:
+        sub_c1, sub_c2 = st.columns(2)
+        with sub_c1:
+            if st.button("📜 Close"):
+                st.session_state.view = "desk"
+                st.rerun()
+        with sub_c2:
+            narrate = st.button("🗣️ Read to Me")
+
+    with nav_col3:
         if st.button("Next ➡️", disabled=curr >= len(pages) - 1):
             st.session_state.current_page = min(len(pages) - 1, curr + 1)
             st.rerun()
             
-    # Audio Player
-    if st.session_state.audio_b64:
-        audio_tag = f"""
-            <audio autoplay loop id="bg-audio">
-                <source src="data:audio/mp3;base64,{st.session_state.audio_b64}" type="audio/mp3">
-            </audio>
-            <script>
-                const audio = document.getElementById("bg-audio");
-                if (audio) {{ audio.volume = 0.25; }}
-            </script>
-        """
-        st.markdown(audio_tag, unsafe_allow_html=True)
+    # --- AUDIO LOGIC (Background + Narrator) ---
+    narrator_audio_html = ""
+    if narrate:
+        with st.spinner("The storyteller is clearing his throat..."):
+            clean_text = pages[curr].replace("<br>", " ").replace("\n", " ")
+            narrator_b64 = generate_audio_for_text(clean_text)
+            if narrator_b64:
+                # IMPORTANT: do not indent the HTML itself
+                narrator_audio_html = f"""
+<audio autoplay id="narrator">
+<source src="data:audio/mp3;base64,{narrator_b64}" type="audio/mp3">
+</audio>
+"""
+
+    html_content = f"""
+{f'<audio autoplay loop id="bg-audio"><source src="{audio_url}" type="audio/mp3"></audio>' if audio_url else ''}
+
+{narrator_audio_html}
+
+<script>
+    var bg = document.getElementById("bg-audio");
+    var narrator = document.getElementById("narrator");
+    
+    // Set initial background volume
+    if (bg) {{ bg.volume = 0.2; }}
+    
+    // Audio Ducking Logic
+    if (narrator && bg) {{
+        var originalVol = bg.volume;
+        bg.volume = 0.05;
+        
+        narrator.onended = function() {{
+            var fade = setInterval(function() {{
+                if (bg.volume < originalVol) {{
+                    bg.volume += 0.02;
+                }} else {{
+                    clearInterval(fade);
+                }}
+            }}, 200);
+        }};
+    }}
+</script>
+"""
+
+    st.markdown(html_content, unsafe_allow_html=True)
 
 # --- MAIN ROUTER ---
 if st.session_state.view == "desk":

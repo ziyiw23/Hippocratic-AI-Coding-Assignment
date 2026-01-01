@@ -1,78 +1,48 @@
-# Hippocratic AI Coding Assignment
-Welcome to the [Hippocratic AI](https://www.hippocraticai.com) coding assignment
+# Bedtime Storybook Agent
+A multi-step story generator for ages 5–10 with an LLM writer, judge/refiner loop, DALL-E illustrations, and a 3D “antique book” UI in Streamlit.
 
-## Instructions
-The attached code is a simple python script skeleton. Your goal is to take any simple bedtime story request and use prompting to tell a story appropriate for ages 5 to 10.
-- Incorporate a LLM judge to improve the quality of the story
-- Provide a block diagram of the system you create that illustrates the flow of the prompts and the interaction between judge, storyteller, user, and any other components you add
-- Do not change the openAI model that is being used. 
-- Please use your own openAI key, but do not include it in your final submission.
-- Otherwise, you may change any code you like or add any files
+## What it does
+- Takes a story prompt, drafts with a children’s-author persona, and auto-refines using a judge that enforces age-appropriate, friendly content.
+- Generates an illustration prompt and (when an API key is present) a DALL-E image; otherwise uses cached placeholders.
+- Presents the result in a 3D book experience with page flips, ambient audio (local tracks), and quick-pick prompt suggestions.
 
----
+## Quick start
+1) Install deps  
+`pip install -r requirements.txt`
 
-## Rules
-- This assignment is open-ended
-- You may use any resources you like with the following restrictions
-   - They must be resources that would be available to you if you worked here (so no other humans, no closed AIs, no unlicensed code, etc.)
-   - Allowed resources include but not limited to Stack overflow, random blogs, chatGPT et al
-   - You have to be able to explain how the code works, even if chatGPT wrote it
-- DO NOT PUSH THE API KEY TO GITHUB. OpenAI will automatically delete it
+2) Set your key  
+Create `.env` with `OPENAI_API_KEY=your_key` (never committed).
 
----
+3) Run the UI  
+`streamlit run streamlit_app.py`  
+Open http://localhost:8501. Enter your prompt or pick a suggestion, choose ambience, and click “Write Story”.
 
-## What does "tell a story" mean?
-It should be appropriate for ages 5-10. Other than that it's up to you. Here are some ideas to help get the brain-juices flowing!
-- Use story arcs to tell better stories
-- Allow the user to provide feedback or request changes
-- Categorize the request and use a tailored generation strategy for each category
+4) CLI (minimal flow)  
+`python main.py`
 
----
+## Features
+- **Agentic loop:** Outliner → Writer → Judge → Refiner (bounded retries).
+- **Safety + tone:** Judge enforces vocabulary and non-scary themes for ages 5–10.
+- **Illustrations:** DALL-E 3 image generation when key is set; session-cached placeholders otherwise.
+- **Immersive UI:** HTML/CSS book renderer, page navigation, local ambient audio, and floating firefly accents.
+- **Prompt ideas:** Sidebar button to fetch fresh prompts (requires key) plus ready-made suggestions.
 
-## How will I be evaluated
-Good question. We want to know the following:
-- The efficacy of the system you design to create a good story
-- Are you comfortable using and writing a python script
-- What kinds of prompting strategies and agent design strategies do you use
-- Are the stories your tool creates good?
-- Can you understand and deconstruct a problem
-- Can you operate in an open-ended environment
-- Can you surprise us
+## Notes
+- Audio is served from local `musics/` files and embedded as base64 for reliability.
+- Autoplay audio may require a user interaction depending on browser policy.
 
----
-
-## Other FAQs
-- How long should I spend on this? 
-No more than 2-3 hours
-- Can I change what the input is? 
-Sure
-- How long should the story be?
-You decide
-
----
-
-## Setup
-- Install deps: `pip install -r requirements.txt`
-- Add `.env` with `OPENAI_API_KEY=your_key` (key is not stored or committed)
-
-## Usage
-- CLI: `python main.py` then enter a story request.
-- UI: `streamlit run streamlit_app.py` to launch the Streamlit app. You can paste the API key in the sidebar if not set in the environment.
-
-## Architecture
-The flow uses an outliner, writer, judge, refiner loop, and illustration/image generation hook feeding the antique book UI.
-
+## Flow
 ```mermaid
 graph TD
-    user[UserRequest] --> outliner[Outliner]
-    outliner --> writer[Storyteller]
-    writer --> judge[LLMJudge]
+    user[User Request] --> outliner[Outliner]
+    outliner --> writer[Writer]
+    writer --> judge[Judge]
     judge -- "Needs improvement" --> refiner[Refiner]
     refiner --> judge
-    judge -- "Approved" --> output[FinalStory]
-    writer --> illustrator[IllustrationPrompt]
-    illustrator --> imagegen[DALL-E3Image]
-    imagegen --> output
-    output --> bookUI[AntiqueBookUI]
+    judge -- "Approved" --> story[Final Story]
+    writer --> illustrator[Illustration Prompt]
+    illustrator --> imagegen[DALL-E 3]
+    imagegen --> story
+    story --> bookUI[3D Book UI]
     imagegen --> bookUI
 ```
