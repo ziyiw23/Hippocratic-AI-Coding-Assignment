@@ -60,7 +60,7 @@ You decide
 - UI: `streamlit run streamlit_app.py` to launch the Streamlit app. You can paste the API key in the sidebar if not set in the environment.
 
 ## Architecture
-The flow uses an outliner, writer, judge, and refiner loop plus an illustration prompt hook.
+The flow uses an outliner, writer, judge, refiner loop, and illustration/image generation hook feeding the antique book UI.
 
 ```mermaid
 graph TD
@@ -71,5 +71,8 @@ graph TD
     refiner --> judge
     judge -- "Approved" --> output[FinalStory]
     writer --> illustrator[IllustrationPrompt]
-    illustrator --> output
+    illustrator --> imagegen[DALL-E3Image]
+    imagegen --> output
+    output --> bookUI[AntiqueBookUI]
+    imagegen --> bookUI
 ```

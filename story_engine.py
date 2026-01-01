@@ -11,12 +11,15 @@ load_dotenv()
 MODEL = "gpt-3.5-turbo"
 
 
-def call_llm(messages, temperature=0.7, max_tokens=800) -> str:
+def _client() -> OpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not set")
-    
-    client = OpenAI(api_key=api_key)
+    return OpenAI(api_key=api_key)
+
+
+def call_llm(messages, temperature=0.7, max_tokens=800) -> str:
+    client = _client()
     resp = client.chat.completions.create(
         model=MODEL,
         messages=messages,
@@ -41,6 +44,7 @@ class StoryResult:
     final_story: str
     feedback: StoryFeedback
     image_prompt: str
+    image_url: Optional[str]
     iterations: int
 
 
@@ -138,10 +142,28 @@ class StoryJudge:
         return StoryFeedback(approved=approved, critique=critique, score=score)
 
 
+class ImageGenerator:
+    def __init__(self, size: str = "1024x1024"):
+        self.size = size
+
+    def generate_image(self, prompt: str) -> Optional[str]:
+        client = _client()
+        resp = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size=self.size,
+            n=1,
+        )
+        if resp.data and resp.data[0].url:
+            return resp.data[0].url
+        return None
+
+
 class StoryOrchestrator:
     def __init__(self, writer_temperature: float = 0.85, judge_temperature: float = 0.15):
         self.generator = StoryGenerator(writer_temperature=writer_temperature)
         self.judge = StoryJudge(judge_temperature=judge_temperature)
+        self.image_generator = ImageGenerator()
 
     def run(self, request: str, retries: int = 2) -> StoryResult:
         outline = self.generator.create_outline(request)
@@ -154,6 +176,7 @@ class StoryOrchestrator:
             feedback = self.judge.evaluate(draft)
         final_story = draft
         image_prompt = self.generator.illustration_prompt(final_story)
+        image_url = self.image_generator.generate_image(image_prompt)
         return StoryResult(
             request=request,
             outline=outline,
@@ -161,6 +184,7 @@ class StoryOrchestrator:
             final_story=final_story,
             feedback=feedback,
             image_prompt=image_prompt,
+            image_url=image_url,
             iterations=iterations,
         )
 
