@@ -17,8 +17,9 @@ A multi-step story generator for ages 5–10 with an LLM writer, judge/refiner l
 2) Run the UI  
 `streamlit run streamlit_app.py`  
 Open the Network URL. Enter your prompt or pick a suggestion, choose ambience, and click “Write Story”.
+**or** used the [deployed web interface](https://hippocratic-ai-coding-assignment-7aql6hd3kqdxziz9wl3bts.streamlit.app/) on streamlit.
 
-3) CLI (minimal flow)  
+4) CLI (minimal flow)  
 `python main.py`
 
 ## Features
